@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from timm.models.layers import DropPath, trunc_normal_
-from utils import get_missing_parameters_message, get_unexpected_parameters_message
+from segmentation.models.utils import get_missing_parameters_message, get_unexpected_parameters_message
 
 from pointnet2_ops import pointnet2_utils
 from knn_cuda import KNN
@@ -169,7 +169,7 @@ class TransformerEncoder(nn.Module):
         return feature_list
 
 
-from models.pointnet2_utils import PointNetFeaturePropagation
+from segmentation.models.pointnet2_utils import PointNetFeaturePropagation
 class DGCNN_Propagation(nn.Module):
     def __init__(self, k = 16):
         super().__init__()
@@ -291,7 +291,7 @@ class get_model(nn.Module):
 
         self.propagation_2 = PointNetFeaturePropagation(in_channel= self.trans_dim + 3, mlp = [self.trans_dim * 4, self.trans_dim])
         self.propagation_1= PointNetFeaturePropagation(in_channel= self.trans_dim + 3, mlp = [self.trans_dim * 4, self.trans_dim])
-        self.propagation_0 = PointNetFeaturePropagation(in_channel= self.trans_dim + 3 + 16, mlp = [self.trans_dim * 4, self.trans_dim])
+        self.propagation_0 = PointNetFeaturePropagation(in_channel= self.trans_dim + 3 , mlp = [self.trans_dim * 4, self.trans_dim])
         self.dgcnn_pro_1 = DGCNN_Propagation(k = 4)
         self.dgcnn_pro_2 = DGCNN_Propagation(k = 4)
 
@@ -339,6 +339,9 @@ class get_model(nn.Module):
 
     def forward(self, pts, cls_label):
         B,C,N = pts.shape
+        #print('forward batch: ' + str(B))
+        #print('forward dimensions: ' + str(C))
+        #print('forward num_points: ' + str(N))
         pts = pts.transpose(-1, -2) # B N 3
         # divide the point clo  ud in the same form. This is important
         neighborhood, center = self.group_divider(pts)
@@ -359,9 +362,17 @@ class get_model(nn.Module):
         feature_list = self.blocks(x, pos)
         feature_list = [self.norm(x)[:,1:].transpose(-1, -2).contiguous() for x in feature_list]
 
-        cls_label_one_hot = cls_label.view(B, 16, 1).repeat(1, 1, N)
-        center_level_0 = pts.transpose(-1, -2).contiguous()                     
-        f_level_0 = torch.cat([cls_label_one_hot, center_level_0], 1)
+        # 19 classes in semantic kitti
+        #print('cls_label_shape: ' + str(cls_label.shape))
+        #cls_label_one_hot = cls_label.view(B, 19, 1).repeat(1, 1, N)
+        # cls label is already given as one-hot no need to make it one-hot
+        #cls_label_one_hot = cls_label.transpose(-1,-2).contiguous()
+        # WE DO NOT USE ANY LABEL INPUT FOR FORWARD IN SEMANTIC KITTI
+        center_level_0 = pts.transpose(-1, -2).contiguous()
+        #print(center_level_0.shape)
+        #print(cls_label_one_hot.shape)
+        #f_level_0 = torch.cat([cls_label_one_hot, center_level_0], 1)
+        f_level_0 = center_level_0
 
         center_level_1 = fps(pts, 512).transpose(-1, -2).contiguous()            
         f_level_1 = center_level_1
