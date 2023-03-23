@@ -51,7 +51,9 @@ def train():
 
 
     # obtaining torch datasets needed for training and setting training parameters
-    npoints=131072
+    npoints = 65536
+    # below is the goal number of points to process
+    #npoints=131072
     train = SemanticKitti(npoints=npoints)
     val = SemanticKitti(split='val',npoints=npoints)
 
@@ -90,6 +92,8 @@ def train():
     # loading pretrained weights
     pretrained_path = os.path.join(ROOT_DIR,'segmentation','saved_weights','Point-BERT.pth')
     model.load_model_from_ckpt(pretrained_path)
+
+    # freezing weights from part of the model (we are saving some vram by only finetuning)
 
     # optimizer settings
     decay_rate = 5e-2
