@@ -88,13 +88,22 @@ def train():
     model.apply(inplace_relu)
 
 
-
     # loading pretrained weights
     pretrained_path = os.path.join(ROOT_DIR,'segmentation','saved_weights','Point-BERT.pth')
     model.load_model_from_ckpt(pretrained_path)
 
     # freezing weights from part of the model (we are saving some vram by only finetuning)
-
+    # firstly printing layers of the model (so we can then select which to freeze)
+    total_params = 0
+    table = {}
+    for name, parameter in model.named_parameters():
+        if not parameter.requires_grad: continue
+        params = parameter.numel()
+        table[name] = params
+        total_params += params
+    print(table)
+    print(f"Total Trainable Params: {total_params}")
+    return
     # optimizer settings
     decay_rate = 5e-2
     learning_rate = 0.003
