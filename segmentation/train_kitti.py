@@ -59,7 +59,7 @@ def train():
 
     # we have 19 usable classes (class 0 is omitted for training and eval)
     num_classes = len(train.inv_map) - 1
-    batch_size = 1
+    batch_size = 4
 
     train_loader = data.DataLoader(train,batch_size=batch_size,shuffle=True,num_workers=4)
     val_loader = data.DataLoader(val,batch_size=batch_size,shuffle=False,num_workers=4)
@@ -122,7 +122,6 @@ def train():
         total_params += params
     print(f"Total Trainable Params: {total_params}")
 
-    return
     # optimizer settings
     decay_rate = 5e-2
     learning_rate = 0.003
