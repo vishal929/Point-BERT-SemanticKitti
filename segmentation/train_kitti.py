@@ -92,17 +92,36 @@ def train():
     pretrained_path = os.path.join(ROOT_DIR,'segmentation','saved_weights','Point-BERT.pth')
     model.load_model_from_ckpt(pretrained_path)
 
+    # defining layers to freeze (we definitely want to freeze up to the first 8 heads of the pointBert transformer)
+    # without freezing we are dealing with 27 million trainable parameters!
+    layers_to_freeze = ['cls_token',
+                        'cls_pos',
+                        'encoder',
+                        'reduce_dim',
+                        'pos_embed',
+                        'blocks.blocks.0',
+                        'blocks.blocks.1',
+                        'blocks.blocks.2',
+                        'blocks.blocks.3',
+                        'blocks.blocks.4',
+                        'blocks.blocks.5',
+                        'blocks.blocks.6',
+                        'blocks.blocks.7'
+                        ]
+
     # freezing weights from part of the model (we are saving some vram by only finetuning)
-    # firstly printing layers of the model (so we can then select which to freeze)
+    # printing trainable parameters of the model
     total_params = 0
-    table = {}
     for name, parameter in model.named_parameters():
+        for freeze_name in layers_to_freeze:
+            if freeze_name in name:
+                parameter.requires_grad = False
         if not parameter.requires_grad: continue
         params = parameter.numel()
-        table[name] = params
+        print('name: ' + name + ' params: ' + str(params))
         total_params += params
-    print(table)
     print(f"Total Trainable Params: {total_params}")
+
     return
     # optimizer settings
     decay_rate = 5e-2
