@@ -51,7 +51,7 @@ def train():
 
 
     # obtaining torch datasets needed for training and setting training parameters
-    npoints = 65536
+    npoints = 50000
     # below is the goal number of points to process
     #npoints=131072
     train = SemanticKitti(npoints=npoints)
@@ -59,7 +59,7 @@ def train():
 
     # we have 19 usable classes (class 0 is omitted for training and eval)
     num_classes = len(train.inv_map) - 1
-    batch_size = 4
+    batch_size = 8
 
     train_loader = data.DataLoader(train,batch_size=batch_size,shuffle=True,num_workers=4)
     val_loader = data.DataLoader(val,batch_size=batch_size,shuffle=False,num_workers=4)
@@ -69,8 +69,8 @@ def train():
     #group_size  = 32
     #num_groups = 128
     '''BELOW ARE MY MODIFICATIONS TO GROUP SIZE AND NUM_GROUPS'''
-    group_size=32
-    num_groups=2048
+    group_size=128
+    num_groups=512
     from easydict import EasyDict
     model_config = EasyDict(
         trans_dim= 384,
@@ -83,7 +83,14 @@ def train():
         encoder_dims= 256,
     )
 
-    model = get_model(model_config).cuda()
+
+    model = get_model(model_config)
+    # using data parallelism for multiple gpu training
+    if torch.cuda.device_count() > 1:
+        print("Let's use", torch.cuda.device_count(), "GPUs!")
+        # dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs
+        model = torch.nn.DataParallel(model)
+    model = model.cuda()
     loss_comp = get_loss().cuda()
     model.apply(inplace_relu)
 
