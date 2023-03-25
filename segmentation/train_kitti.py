@@ -51,7 +51,7 @@ def train():
 
 
     # obtaining torch datasets needed for training and setting training parameters
-    npoints = 32768
+    npoints = 16384
     # below is the goal number of points to process
     #npoints=131072
     train = SemanticKitti(npoints=npoints)
@@ -71,7 +71,7 @@ def train():
     '''BELOW ARE MY MODIFICATIONS TO GROUP SIZE AND NUM_GROUPS'''
 
     group_size=32
-    num_groups=128
+    num_groups=512
     from easydict import EasyDict
     model_config = EasyDict(
         trans_dim= 384,
