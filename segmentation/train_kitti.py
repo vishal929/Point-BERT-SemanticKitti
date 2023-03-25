@@ -99,7 +99,10 @@ def train():
 
     # loading pretrained weights
     pretrained_path = os.path.join(ROOT_DIR,'segmentation','saved_weights','Point-BERT.pth')
-    model.load_model_from_ckpt(pretrained_path)
+    if torch.cuda.device_count()>1:
+        model.module.load_model_from_ckpt(pretrained_path)
+    else:
+        model.load_model_from_ckpt(pretrained_path)
 
     # defining layers to freeze (we definitely want to freeze up to the first 8 heads of the pointBert transformer)
     # without freezing we are dealing with 27 million trainable parameters!
