@@ -87,6 +87,7 @@ def train():
     model = get_model(model_config)
     # using data parallelism for multiple gpu training
     if torch.cuda.device_count() > 1:
+        torch.distributed.init_process()
         print("Let's use", torch.cuda.device_count(), "GPUs!")
         # dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs
         model = torch.nn.parallel.DistributedDataParallel(model)
