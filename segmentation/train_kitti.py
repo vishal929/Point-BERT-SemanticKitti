@@ -59,10 +59,10 @@ def train():
 
     # we have 19 usable classes (class 0 is omitted for training and eval)
     num_classes = len(train.inv_map) - 1
-    batch_size = 2
+    batch_size = 3
 
-    train_loader = data.DataLoader(train,batch_size=batch_size,shuffle=True,num_workers=4)
-    val_loader = data.DataLoader(val,batch_size=batch_size,shuffle=False,num_workers=4)
+    train_loader = data.DataLoader(train,batch_size=batch_size,shuffle=True,num_workers=12)
+    val_loader = data.DataLoader(val,batch_size=batch_size,shuffle=False,num_workers=12)
 
     # obtaining model and playing with group size and number of groups
     '''BELOW ARE THE STANDARD GROUP SIZES'''
