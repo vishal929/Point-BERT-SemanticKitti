@@ -59,7 +59,7 @@ def train():
 
     # we have 19 usable classes (class 0 is omitted for training and eval)
     num_classes = len(train.inv_map) - 1
-    batch_size = 4
+    batch_size = 2
 
     train_loader = data.DataLoader(train,batch_size=batch_size,shuffle=True,num_workers=4)
     val_loader = data.DataLoader(val,batch_size=batch_size,shuffle=False,num_workers=4)
@@ -70,8 +70,8 @@ def train():
     #num_groups = 128
     '''BELOW ARE MY MODIFICATIONS TO GROUP SIZE AND NUM_GROUPS'''
 
-    group_size=32
-    num_groups=1024
+    group_size=128
+    num_groups=256
     from easydict import EasyDict
     model_config = EasyDict(
         trans_dim= 384,
