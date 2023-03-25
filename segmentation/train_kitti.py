@@ -70,8 +70,8 @@ def train():
     #num_groups = 128
     '''BELOW ARE MY MODIFICATIONS TO GROUP SIZE AND NUM_GROUPS'''
 
-    group_size=64
-    num_groups=512
+    group_size=32
+    num_groups=128
     from easydict import EasyDict
     model_config = EasyDict(
         trans_dim= 384,
