@@ -298,6 +298,7 @@ class PointNetFeaturePropagation(nn.Module):
             dists = square_distance(xyz1, xyz2)
             '''
             dists = torch.cdist(xyz1,xyz2)
+            print('dists shape: ' + str(dists.shape))
             '''
             TRY SAVING SOME VRAM BY USING TOPK!!!!
             dists, idx = dists.sort(dim=-1)
