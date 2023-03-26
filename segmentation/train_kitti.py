@@ -51,7 +51,7 @@ def train():
 
 
     # obtaining torch datasets needed for training and setting training parameters
-    npoints = 65536
+    npoints = 50000
     # below is the goal number of points to process
     #npoints=131072
     train = SemanticKitti(npoints=npoints)
