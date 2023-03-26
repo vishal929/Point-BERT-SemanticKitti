@@ -51,24 +51,27 @@ def train():
 
 
     # obtaining torch datasets needed for training and setting training parameters
-    npoints=131072
+    npoints = 50000
+    # below is the goal number of points to process
+    #npoints=131072
     train = SemanticKitti(npoints=npoints)
     val = SemanticKitti(split='val',npoints=npoints)
 
     # we have 19 usable classes (class 0 is omitted for training and eval)
     num_classes = len(train.inv_map) - 1
-    batch_size = 1
+    batch_size = 4
 
-    train_loader = data.DataLoader(train,batch_size=batch_size,shuffle=True,num_workers=4)
-    val_loader = data.DataLoader(val,batch_size=batch_size,shuffle=False,num_workers=4)
+    train_loader = data.DataLoader(train,batch_size=batch_size,shuffle=True,num_workers=16)
+    val_loader = data.DataLoader(val,batch_size=batch_size,shuffle=False,num_workers=16)
 
     # obtaining model and playing with group size and number of groups
     '''BELOW ARE THE STANDARD GROUP SIZES'''
     #group_size  = 32
     #num_groups = 128
     '''BELOW ARE MY MODIFICATIONS TO GROUP SIZE AND NUM_GROUPS'''
+
     group_size=32
-    num_groups=4096
+    num_groups=2048
     from easydict import EasyDict
     model_config = EasyDict(
         trans_dim= 384,
@@ -81,15 +84,56 @@ def train():
         encoder_dims= 256,
     )
 
-    model = get_model(model_config).cuda()
+
+    model = get_model(model_config)
+    # using data parallelism for multiple gpu training
+    if torch.cuda.device_count() > 1:
+        #torch.distributed.init_process_group()
+        print("Let's use", torch.cuda.device_count(), "GPUs!")
+        # dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs
+        #model = torch.nn.parallel.DistributedDataParallel(model)
+        model = torch.nn.DataParallel(model)
+    model = model.cuda()
     loss_comp = get_loss().cuda()
     model.apply(inplace_relu)
 
 
-
     # loading pretrained weights
     pretrained_path = os.path.join(ROOT_DIR,'segmentation','saved_weights','Point-BERT.pth')
-    model.load_model_from_ckpt(pretrained_path)
+    if torch.cuda.device_count()>1:
+        model.module.load_model_from_ckpt(pretrained_path)
+    else:
+        model.load_model_from_ckpt(pretrained_path)
+
+    # defining layers to freeze (we definitely want to freeze up to the first 8 heads of the pointBert transformer)
+    # without freezing we are dealing with 27 million trainable parameters!
+    layers_to_freeze = ['cls_token',
+                        'cls_pos',
+                        'encoder',
+                        'reduce_dim',
+                        'pos_embed',
+                        'blocks.blocks.0',
+                        'blocks.blocks.1',
+                        'blocks.blocks.2',
+                        'blocks.blocks.3',
+                        'blocks.blocks.4',
+                        'blocks.blocks.5',
+                        'blocks.blocks.6',
+                        'blocks.blocks.7'
+                        ]
+
+    # freezing weights from part of the model (we are saving some vram by only finetuning)
+    # printing trainable parameters of the model
+    total_params = 0
+    for name, parameter in model.named_parameters():
+        for freeze_name in layers_to_freeze:
+            if freeze_name in name:
+                parameter.requires_grad = False
+        if not parameter.requires_grad: continue
+        params = parameter.numel()
+        print('name: ' + name + ' params: ' + str(params))
+        total_params += params
+    print(f"Total Trainable Params: {total_params}")
 
     # optimizer settings
     decay_rate = 5e-2

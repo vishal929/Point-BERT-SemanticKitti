@@ -293,9 +293,19 @@ class PointNetFeaturePropagation(nn.Module):
         if S == 1:
             interpolated_points = points2.repeat(1, N, 1)
         else:
+            '''
+            TRY SAVING SOME VRAM USING PYTORCH CDIST
             dists = square_distance(xyz1, xyz2)
+            '''
+            dists = torch.cdist(xyz1,xyz2)
+            #print('dists shape: ' + str(dists.shape))
+            '''
+            TRY SAVING SOME VRAM BY USING TOPK!!!!
             dists, idx = dists.sort(dim=-1)
             dists, idx = dists[:, :, :3], idx[:, :, :3]  # [B, N, 3]
+            '''
+            # topk with largest=False gives us 3 smallest elements
+            dists ,idx = dists.topk(3,dim=-1,largest=False)
 
             dist_recip = 1.0 / (dists + 1e-8)
             norm = torch.sum(dist_recip, dim=2, keepdim=True)

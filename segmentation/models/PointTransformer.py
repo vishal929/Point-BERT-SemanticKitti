@@ -374,9 +374,9 @@ class get_model(nn.Module):
         #f_level_0 = torch.cat([cls_label_one_hot, center_level_0], 1)
         f_level_0 = center_level_0
 
-        center_level_1 = fps(pts, 512).transpose(-1, -2).contiguous()            
+        center_level_1 = fps(pts, int(N/4)).transpose(-1, -2).contiguous()
         f_level_1 = center_level_1
-        center_level_2 = fps(pts, 256).transpose(-1, -2).contiguous()            
+        center_level_2 = fps(pts, int(N/8)).transpose(-1, -2).contiguous()
         f_level_2 = center_level_2
         center_level_3 = center.transpose(-1, -2).contiguous()                 
 
