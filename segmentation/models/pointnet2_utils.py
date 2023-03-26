@@ -294,8 +294,13 @@ class PointNetFeaturePropagation(nn.Module):
             interpolated_points = points2.repeat(1, N, 1)
         else:
             dists = square_distance(xyz1, xyz2)
+            '''
+            TRY SAVING SOME VRAM BY USING TOPK!!!!
             dists, idx = dists.sort(dim=-1)
             dists, idx = dists[:, :, :3], idx[:, :, :3]  # [B, N, 3]
+            '''
+            # topk with largest=False gives us 3 smallest elements
+            dists ,idx = dists.topk(3,dim=-1,largest=False)
 
             dist_recip = 1.0 / (dists + 1e-8)
             norm = torch.sum(dist_recip, dim=2, keepdim=True)
