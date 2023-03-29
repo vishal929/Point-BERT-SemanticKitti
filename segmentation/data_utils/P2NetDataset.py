@@ -2,13 +2,13 @@ import torch
 import torch.utils.data as data
 from segmentation.data_utils.SemanticKittiDataset import load_kitti_label_map, SemanticKitti
 import functools
-from Constants.constants import ROOT_DIR
 import os
-from pathlib import Path
 import segmentation.provider as provider
 import torch.nn as nn
 import numpy as np
 import open3d as o3d
+from knn_cuda import KNN
+
 """import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D"""
 
@@ -19,15 +19,15 @@ class P2Net_Dataset(SemanticKitti):
         # num_seq = 1 + num of previous time step
         self.num_seq = num_seq
 
-
     def __getitem__(self, idx):
         # construct the file path using id of scene and frame
         point_cloud_file, label_file = self.file_list[idx]
 
         # get the scene and frame id from the path
         scene, frame = get_seq_frame(point_cloud_file)
+
         # to make sure the frame have n-1 previous frames
-        if int(frame)< self.num_seq - 1:
+        if int(frame) < self.num_seq - 1:
             frame = str(self.num_seq - 1).zfill(6)
 
         point_clouds = []
@@ -46,6 +46,7 @@ class P2Net_Dataset(SemanticKitti):
 
             # get the labels and filter out the outliers
             labels = None
+
             if label_file is not None:
                 # lower 16 bits give the semantic label
                 # higher 16 bits gives the instance label
@@ -169,7 +170,6 @@ def col(item, model=None, device='cpu'):
     seg_pred = seg_pred.reshape(batch_size, num_seq, num_points, -1)
     seg_pred = seg_pred.permute(0, 2, 1, 3).contiguous()
     seg_pred = seg_pred.reshape(batch_size, num_points, -1)
-
     #-----------------------------------------------------------------Point Bert-------------------------------------------------
 
 
