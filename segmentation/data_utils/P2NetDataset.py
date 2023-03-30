@@ -169,13 +169,36 @@ def col(item, model=None, device='cpu'):
 
     seg_pred = seg_pred.reshape(batch_size, num_seq, num_points, -1)
     seg_pred = seg_pred.permute(0, 2, 1, 3).contiguous()
-    seg_pred = seg_pred.reshape(batch_size, num_points, -1)
+    seg_pred = seg_pred.reshape(batch_size, num_points, -1).cpu()
     #-----------------------------------------------------------------Point Bert-------------------------------------------------
 
+    points_clouds = torch.stack([torch.Tensor(point_cloud) for point_cloud in point_clouds]).reshape(batch_size, num_seq, num_points, -1).float().to(device)
 
+    # Instantiate KNN module
+    knn_module = KNN(k=1, transpose_mode=True)
 
+    # Initialize the result tensor
+    result = torch.zeros(batch_size, num_points, 4 * num_seq)
 
+    for b in range(batch_size):
+        pc_t = points_clouds[b, 0].cuda()
+        for i in range(1, num_seq):
+            pc_prev = points_clouds[b, i].cuda()
 
+            # Find nearest neighbors in pc_prev
+            _, nearest_neighbor_idx = knn_module(pc_prev[:, :3].unsqueeze(0), pc_t[:, :3].unsqueeze(0))
+
+            # Get nearest neighbors from pc_prev using the indices
+            nearest_neighbors = pc_prev[nearest_neighbor_idx]
+
+            # Concatenate pc_t with nearest neighbors
+            result[b, :, 4 * i:4 * (i + 1)] = torch.tensor(nearest_neighbors).cpu()
+
+        result[b, :, :4] = point_clouds[b, 0]
+
+    del pc_t, pc_prev
+    print(result.shape)
+    exit(0)
 
 
     return torch.ones(1)
