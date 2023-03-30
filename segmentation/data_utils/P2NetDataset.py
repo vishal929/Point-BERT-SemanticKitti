@@ -145,9 +145,10 @@ def get_seq_frame(path):
 
     return parent_dir, number
 
-def col(item, model=None, device='cpu'):
+def col(item, model=None, device='cuda'):
     point_clouds = [tmp_item[0] for tmp_item in item]
     labels = [tmp_item[1] for tmp_item in item]
+    labels = torch.stack(labels)
 
     batch_size = len(point_clouds)
     num_seq = len(point_clouds[0])
@@ -189,19 +190,22 @@ def col(item, model=None, device='cpu'):
             _, nearest_neighbor_idx = knn_module(pc_prev[:, :3].unsqueeze(0), pc_t[:, :3].unsqueeze(0))
 
             # Get nearest neighbors from pc_prev using the indices
-            nearest_neighbors = pc_prev[nearest_neighbor_idx]
+            nearest_neighbors = pc_prev[nearest_neighbor_idx].squeeze(-2)
 
             # Concatenate pc_t with nearest neighbors
-            result[b, :, 4 * i:4 * (i + 1)] = torch.tensor(nearest_neighbors).cpu()
+            result[b, :, 4 * i:4 * (i + 1)] = nearest_neighbors.cpu()
 
-        result[b, :, :4] = point_clouds[b, 0]
+        result[b, :, :4] = points_clouds[b, 0]
 
     del pc_t, pc_prev
-    print(result.shape)
-    exit(0)
+
+    points_clouds = torch.cat((seg_pred, result), dim=-1)
 
 
-    return torch.ones(1)
+    return {
+        'input_seq': points_clouds,
+        'labels: ': labels
+    }
 
 
 # a fake model to test the dataset
