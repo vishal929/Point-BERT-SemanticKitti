@@ -14,6 +14,7 @@ if __name__ == '__main__':
     group_size = 32
     num_groups = 2048
     batch_size = 2
+    num_seq = 3
 
     # get model
     model_config = EasyDict(
@@ -28,7 +29,7 @@ if __name__ == '__main__':
     )
     model = get_model(model_config).to('cuda').requires_grad_(False)
 
-    dataset = P2Net_Dataset(npoints=npoints, num_seq=3)
+    dataset = P2Net_Dataset(npoints=npoints, num_seq=num_seq)
 
     collate_fn = functools.partial(P2Net_collatn, model=model)
 
@@ -38,3 +39,22 @@ if __name__ == '__main__':
         input_seq = item['input_seq']
         labels = item['labels']
         assert input_seq.shape == torch.Size([2, npoints, 4 * (4 + num_classes)])
+        break
+
+    # test if the knn works
+
+    result = torch.zeros(batch_size, npoints, 4 * num_seq)
+
+    for i in range(batch_size):
+        seq, _ = dataset[i]
+        pc_t = torch.tensor(seq[0]).float()
+        for j in range(1, num_seq):
+            pc_t_1 = torch.tensor(seq[i]).float()
+            distance_matrix_1 = torch.cdist(pc_t[:, :3], pc_t_1[:, :3])
+            nearest_neighbor_idx = torch.argmin(distance_matrix_1, dim=1)
+            nearest_neighbor = pc_t_1[nearest_neighbor_idx]
+            result[i, :, 4*j : 4*(j+1)] = nearest_neighbor - pc_t
+        result[i, :, :4] = pc_t
+
+    diff = torch.abs(input_seq[:, :, :4*num_seq] - result)
+    assert torch.max(diff) < 1e-6
