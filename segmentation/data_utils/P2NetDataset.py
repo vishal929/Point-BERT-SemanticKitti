@@ -93,20 +93,6 @@ class P2Net_Dataset(SemanticKitti):
     def __len__(self):
         return len(self.file_list)
 
-def get_pcd_from_numpy(pcd_np):
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(pcd_np[:, :3])
-    return pcd
-
-def find_transformation(source, target, trans_init):
-    threshold = 0.2
-    if not source.has_normals():
-        source.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.5, max_nn=50))
-    if not target.has_normals():
-        target.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.5, max_nn=50))
-    transformation = o3d.pipelines.registration.registration_icp(source, target, threshold, trans_init,
-                                                       o3d.pipelines.registration.TransformationEstimationPointToPlane()).transformation
-    return transformation
 def align(points_list):
     current = points_list[0]
     previous_list = points_list[1:]
@@ -132,7 +118,20 @@ def align(points_list):
         points_list[i][:, 0:3] = aligned_previous_list[i][:, 0:3]
 
     return points_list
+def get_pcd_from_numpy(pcd_np):
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(pcd_np[:, :3])
+    return pcd
 
+def find_transformation(source, target, trans_init):
+    threshold = 0.2
+    if not source.has_normals():
+        source.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.5, max_nn=50))
+    if not target.has_normals():
+        target.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.5, max_nn=50))
+    transformation = o3d.pipelines.registration.registration_icp(source, target, threshold, trans_init,
+                                                       o3d.pipelines.registration.TransformationEstimationPointToPlane()).transformation
+    return transformation
 def get_seq_frame(path):
     # Split the path into directory and filename
     dir_path, filename = os.path.split(path)
@@ -145,10 +144,12 @@ def get_seq_frame(path):
 
     return parent_dir, number
 
-def col(item, model=None, device='cuda'):
+# the collatn_fn function for loading the P2NetDataset into the pytorch dataloader
+def P2Net_collatn(item, model=None, device='cuda'):
     point_clouds = [tmp_item[0] for tmp_item in item]
-    labels = [tmp_item[1] for tmp_item in item]
-    labels = torch.stack(labels)
+    if item[0][1] is not None:
+        labels = [tmp_item[1] for tmp_item in item]
+        labels = torch.stack(labels)
 
     batch_size = len(point_clouds)
     num_seq = len(point_clouds[0])
@@ -165,6 +166,7 @@ def col(item, model=None, device='cuda'):
     points_pb = torch.Tensor(points_pb)
     points_pb = points_pb.float().to(device)
 
+    # get the model predict for every point clouds
     points_pb = points_pb.transpose(2, 1)
     seg_pred, _ = model(points_pb, None) #(batch_size * num_seq, num_points, cls_num)
 
@@ -175,6 +177,7 @@ def col(item, model=None, device='cuda'):
 
     points_clouds = torch.stack([torch.Tensor(point_cloud) for point_cloud in point_clouds]).reshape(batch_size, num_seq, num_points, -1).float().to(device)
 
+    # -----------------------------------------------------------------Nearest Neighbor------------------------------------------
     # Instantiate KNN module
     knn_module = KNN(k=1, transpose_mode=True)
 
@@ -190,7 +193,7 @@ def col(item, model=None, device='cuda'):
             _, nearest_neighbor_idx = knn_module(pc_prev[:, :3].unsqueeze(0), pc_t[:, :3].unsqueeze(0))
 
             # Get nearest neighbors from pc_prev using the indices
-            nearest_neighbors = pc_prev[nearest_neighbor_idx].squeeze(-2)
+            nearest_neighbors = pc_prev[nearest_neighbor_idx].squeeze(-2) - pc_t[nearest_neighbor_idx].squeeze(-2)
 
             # Concatenate pc_t with nearest neighbors
             result[b, :, 4 * i:4 * (i + 1)] = nearest_neighbors.cpu()
@@ -198,15 +201,15 @@ def col(item, model=None, device='cuda'):
         result[b, :, :4] = points_clouds[b, 0]
 
     del pc_t, pc_prev
+    # -----------------------------------------------------------------Nearest Neighbor------------------------------------------
 
-    points_clouds = torch.cat((seg_pred, result), dim=-1)
-
+    # concat the prediction and the nearst neighbor info
+    points_clouds = torch.cat((seg_pred, result), dim=-1) # ( batch_size, num_points, 4*(num_seq + class_num) )
 
     return {
         'input_seq': points_clouds,
         'labels: ': labels
     }
-
 
 # a fake model to test the dataset
 class test_Model(nn.Module):
@@ -224,7 +227,7 @@ if __name__ == '__main__':
 
     dataset = P2Net_Dataset()
 
-    collate_fn = functools.partial(col, model=fake_point_bert)
+    collate_fn = functools.partial(P2Net_collatn, model=fake_point_bert)
 
     loader = data.DataLoader(dataset, batch_size=2, collate_fn= collate_fn)
 
