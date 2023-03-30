@@ -1,12 +1,9 @@
 from segmentation.data_utils.P2NetDataset import P2Net_Dataset, P2Net_collatn
-import numpy as np
 import torch
 import torch.utils.data as data
 from easydict import EasyDict
 from segmentation.models.PointTransformer import get_model
 import functools
-
-# 改dataset， point 的 predict 也要对上
 
 if __name__ == '__main__':
     npoints = 50000
