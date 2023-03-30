@@ -157,25 +157,7 @@ def P2Net_collatn(item, model=None, device='cuda'):
 
     point_clouds = [tmp_point for tmp_points in point_clouds for tmp_point in tmp_points]
 
-    #-----------------------------------------------------------------Point Bert-------------------------------------------------
-    # batch up the point_clouds
-    points_pb= torch.stack([torch.Tensor(point_cloud) for point_cloud in point_clouds])[:, :, 0:3] # (batch_size * num_seq, num_points, 3)
-    points_pb = points_pb.data.numpy()
-    points_pb[:, :, 0:3] = provider.random_scale_point_cloud(points_pb[:, :, 0:3])
-    points_pb[:, :, 0:3] = provider.shift_point_cloud(points_pb[:, :, 0:3])
-    points_pb = torch.Tensor(points_pb)
-    points_pb = points_pb.float().to(device)
-
-    # get the model predict for every point clouds
-    points_pb = points_pb.transpose(2, 1)
-    seg_pred, _ = model(points_pb, None) #(batch_size * num_seq, num_points, cls_num)
-
-    seg_pred = seg_pred.reshape(batch_size, num_seq, num_points, -1)
-    seg_pred = seg_pred.permute(0, 2, 1, 3).contiguous()
-    seg_pred = seg_pred.reshape(batch_size, num_points, -1).cpu()
-    #-----------------------------------------------------------------Point Bert-------------------------------------------------
-
-    points_clouds = torch.stack([torch.Tensor(point_cloud) for point_cloud in point_clouds]).reshape(batch_size, num_seq, num_points, -1).float().to(device)
+    points_clouds = torch.stack([torch.Tensor(point_cloud) for point_cloud in point_clouds]).reshape(batch_size,num_seq,num_points,-1).float().to(device)
 
     # -----------------------------------------------------------------Nearest Neighbor------------------------------------------
     # Instantiate KNN module
@@ -194,6 +176,7 @@ def P2Net_collatn(item, model=None, device='cuda'):
 
             # Get nearest neighbors from pc_prev using the indices
             nearest_neighbors = pc_prev[nearest_neighbor_idx].squeeze(-2) - pc_t[nearest_neighbor_idx].squeeze(-2)
+            points_clouds[b, i] = pc_prev[nearest_neighbor_idx].squeeze(-2)
 
             # Concatenate pc_t with nearest neighbors
             result[b, :, 4 * i:4 * (i + 1)] = nearest_neighbors.cpu()
@@ -203,11 +186,31 @@ def P2Net_collatn(item, model=None, device='cuda'):
     del pc_t, pc_prev
     # -----------------------------------------------------------------Nearest Neighbor------------------------------------------
 
+    #-----------------------------------------------------------------Point Bert-------------------------------------------------
+    # batch up the point_clouds
+    points_pb = points_clouds[:, :, 0:3] # (batch_size * num_seq, num_points, 3)
+    points_pb = points_pb.data.numpy()
+    points_pb[:, :, 0:3] = provider.random_scale_point_cloud(points_pb[:, :, 0:3])
+    points_pb[:, :, 0:3] = provider.shift_point_cloud(points_pb[:, :, 0:3])
+    points_pb = torch.Tensor(points_pb)
+    points_pb = points_pb.float().to(device)
+
+    # get the model predict for every point clouds
+    points_pb = points_pb.transpose(2, 1)
+    seg_pred, _ = model(points_pb, None) #(batch_size * num_seq, num_points, cls_num)
+
+    seg_pred = seg_pred.reshape(batch_size, num_seq, num_points, -1)
+    seg_pred = seg_pred.permute(0, 2, 1, 3).contiguous()
+    seg_pred = seg_pred.reshape(batch_size, num_points, -1).cpu()
+    #-----------------------------------------------------------------Point Bert-------------------------------------------------
+
+
+
     # concat the prediction and the nearst neighbor info
-    points_clouds = torch.cat((seg_pred, result), dim=-1) # ( batch_size, num_points, 4*(num_seq + class_num) )
+    input_seq = torch.cat((seg_pred, result), dim=-1) # ( batch_size, num_points, 4*(num_seq + class_num) )
 
     return {
-        'input_seq': points_clouds,
+        'input_seq': input_seq,
         'labels: ': labels
     }
 
