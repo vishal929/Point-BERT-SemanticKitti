@@ -190,7 +190,7 @@ class test_Model(nn.Module):
         tensor_shape = np.array(x.shape)
         B, _, num_points = tensor_shape
         x = torch.randn((B, num_points, self.num_cls))
-        return x,y
+        return x, y
 
 if __name__ == '__main__':
     fake_point_bert = test_Model(num_cls=19)
