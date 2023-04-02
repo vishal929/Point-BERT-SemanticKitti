@@ -175,8 +175,9 @@ def P2Net_collatn(item, model=None, device='cuda'):
             _, nearest_neighbor_idx = knn_module(pc_prev[:, :3].unsqueeze(0), pc_t[:, :3].unsqueeze(0))
 
             # Get nearest neighbors from pc_prev using the indices
-            nearest_neighbors = pc_prev[nearest_neighbor_idx].squeeze(-2) - pc_t[nearest_neighbor_idx].squeeze(-2)
-            points_clouds[b, i] = pc_prev[nearest_neighbor_idx].squeeze(-2)
+            nearest_neighbors = pc_prev[nearest_neighbor_idx].squeeze(-2) - pc_t.unsqueeze(0)
+            nearest_neighbor_idx = nearest_neighbor_idx.squeeze(0).squeeze(-1)
+            points_clouds[b, i] = pc_prev.index_select(0, nearest_neighbor_idx)
 
             # Concatenate pc_t with nearest neighbors
             result[b, :, 4 * i:4 * (i + 1)] = nearest_neighbors.cpu()
@@ -188,8 +189,8 @@ def P2Net_collatn(item, model=None, device='cuda'):
 
     #-----------------------------------------------------------------Point Bert-------------------------------------------------
     # batch up the point_clouds
-    points_pb = points_clouds[:, :, 0:3] # (batch_size * num_seq, num_points, 3)
-    points_pb = points_pb.data.numpy()
+    points_pb = points_clouds.reshape(-1, num_points, 4)[:, :, 0:3] # (batch_size * num_seq, num_points, 3)
+    points_pb = points_pb.cpu().data.numpy()
     points_pb[:, :, 0:3] = provider.random_scale_point_cloud(points_pb[:, :, 0:3])
     points_pb[:, :, 0:3] = provider.shift_point_cloud(points_pb[:, :, 0:3])
     points_pb = torch.Tensor(points_pb)
@@ -211,7 +212,7 @@ def P2Net_collatn(item, model=None, device='cuda'):
 
     return {
         'input_seq': input_seq,
-        'labels: ': labels
+        'labels': labels
     }
 
 # a fake model to test the dataset

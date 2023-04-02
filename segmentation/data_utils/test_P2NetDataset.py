@@ -6,7 +6,7 @@ from segmentation.models.PointTransformer import get_model
 import functools
 
 if __name__ == '__main__':
-    npoints = 50000
+    npoints = 5000
     num_classes = 19
     group_size = 32
     num_groups = 2048
@@ -35,7 +35,7 @@ if __name__ == '__main__':
     for i, item in enumerate(loader):
         input_seq = item['input_seq']
         labels = item['labels']
-        assert input_seq.shape == torch.Size([2, npoints, 4 * (4 + num_classes)])
+        assert input_seq.shape == torch.Size([2, npoints, num_seq * (4 + num_classes)])
         break
 
     # test if the knn works
@@ -53,5 +53,5 @@ if __name__ == '__main__':
             result[i, :, 4*j : 4*(j+1)] = nearest_neighbor - pc_t
         result[i, :, :4] = pc_t
 
-    diff = torch.abs(input_seq[:, :, :4*num_seq] - result)
+    diff = torch.abs(input_seq[:, :, -4*num_seq:] - result)
     assert torch.max(diff) < 1e-6
