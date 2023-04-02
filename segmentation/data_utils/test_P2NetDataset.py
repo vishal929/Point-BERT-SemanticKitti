@@ -42,16 +42,20 @@ if __name__ == '__main__':
 
     result = torch.zeros(batch_size, npoints, 4 * num_seq)
 
+    l = []
     for i in range(batch_size):
         seq, _ = dataset[i]
+        l.append([seq, _])
         pc_t = torch.tensor(seq[0]).float()
         for j in range(1, num_seq):
-            pc_t_1 = torch.tensor(seq[i]).float()
+            pc_t_1 = torch.tensor(seq[j]).float()
             distance_matrix_1 = torch.cdist(pc_t[:, :3], pc_t_1[:, :3])
             nearest_neighbor_idx = torch.argmin(distance_matrix_1, dim=1)
             nearest_neighbor = pc_t_1[nearest_neighbor_idx]
             result[i, :, 4*j : 4*(j+1)] = nearest_neighbor - pc_t
         result[i, :, :4] = pc_t
+
+    input_seq = collate_fn(l)['input_seq']
 
     diff = torch.abs(input_seq[:, :, -4*num_seq:] - result)
     assert torch.max(diff) < 1e-6
