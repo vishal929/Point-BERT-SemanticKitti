@@ -281,7 +281,7 @@ class test_Model(nn.Module):
 if __name__ == '__main__':
     fake_point_bert = test_Model(num_cls=19)
 
-    dataset = P2Net_Dataset()
+    dataset = P2Net_Dataset(npoints=50000)
 
     collate_fn = functools.partial(P2Net_collatn, model=fake_point_bert)
 
