@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 
 from segmentation.models.PointTransformer import get_model
 from segmentation.data_utils.P2NetDataset import P2Net_Dataset, P2Net_collatn
+from train_kitti import inplace_relu
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Using device:', device)
@@ -17,7 +18,7 @@ class p2_net(nn.Module):
         super(p2_net, self).__init__()
         self.q = q
         self.layers = nn.Sequential(
-            nn.Linear(3*q+12, 128),
+            nn.Linear(3*q+11, 128),
             nn.BatchNorm1d(128),
             nn.ReLU(),
             nn.Linear(128, 1024),
@@ -44,12 +45,16 @@ class p2_net(nn.Module):
         
         return x
 
-if __name__ == '__main__':
-    npoints = 5000
+def trainP2():
+    # pytorch optimizations
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32 = True
+
+    npoints = 50000
     num_classes = 19
     group_size = 32
     num_groups = 2048
-    batch_size = 2
+    batch_size = 1
     num_seq = 3
     lr= 0.003
     num_epochs = 10
@@ -71,6 +76,10 @@ if __name__ == '__main__':
     state_dict = ckpt['model_state_dict']
     state_dict = {k.replace("module.", ""): v for k, v in state_dict.items()}
     model.load_state_dict(state_dict)
+    model.apply(inplace_relu)
+    del(ckpt)
+    del(state_dict)
+    torch.cuda.empty_cache()
     model.eval()
 
     dataset = P2Net_Dataset(npoints=npoints, num_seq=num_seq)
