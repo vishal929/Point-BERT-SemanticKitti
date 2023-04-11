@@ -8,6 +8,7 @@ import torch.nn as nn
 import numpy as np
 import open3d as o3d
 from knn_cuda import KNN
+import faiss
 
 """import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D"""
@@ -74,7 +75,8 @@ class P2Net_Dataset(SemanticKitti):
             point_clouds.append(point_cloud)
 
         # align the points to the current's scenes'
-        point_clouds = align(point_clouds)
+        # we only align after sampling and getting raw predictions
+        #point_clouds = align(point_clouds)
         if self.npoints is not None:
             flag = True
             for i, point_cloud in enumerate(point_clouds):
@@ -159,20 +161,56 @@ def P2Net_collatn(item, model=None, device='cuda'):
 
     points_clouds = torch.stack([torch.Tensor(point_cloud) for point_cloud in point_clouds]).reshape(batch_size,num_seq,num_points,-1).float().to(device)
 
+    # -----------------------------------------------------------------Point Bert-------------------------------------------------
+    # batch up the point_clouds
+    points_pb = points_clouds.reshape(-1, num_points, 4)[:, :, 0:3]  # (batch_size * num_seq, num_points, 3)
+    points_pb = points_pb.cpu().data.numpy()
+    points_pb[:, :, 0:3] = provider.random_scale_point_cloud(points_pb[:, :, 0:3])
+    points_pb[:, :, 0:3] = provider.shift_point_cloud(points_pb[:, :, 0:3])
+    points_pb = torch.Tensor(points_pb)
+    points_pb = points_pb.float().to(device)
+
+    # get the model predict for every point clouds
+    points_pb = points_pb.transpose(2, 1)
+    seg_pred, _ = model(points_pb, None)  # (batch_size * num_seq, num_points, cls_num)
+
+    seg_pred = seg_pred.reshape(batch_size, num_seq, num_points, -1)
+    seg_pred = seg_pred.permute(0, 2, 1, 3).contiguous()
+    seg_pred = seg_pred.reshape(batch_size, num_points, -1).cpu()
+    # -----------------------------------------------------------------Point Bert-------------------------------------------------
+
     # -----------------------------------------------------------------Nearest Neighbor------------------------------------------
+
+    # align sequential frames
+    point_clouds = align(point_clouds)
+
     # Instantiate KNN module
     knn_module = KNN(k=1, transpose_mode=True)
 
     # Initialize the result tensor
     result = torch.zeros(batch_size, num_points, 4 * num_seq)
 
+    # get num gpus
+    num_gpus = faiss.get_num_gpus()
+
     for b in range(batch_size):
         pc_t = points_clouds[b, 0].cuda()
         for i in range(1, num_seq):
             pc_prev = points_clouds[b, i].cuda()
 
-            # Find nearest neighbors in pc_prev
-            _, nearest_neighbor_idx = knn_module(pc_prev[:, :3].unsqueeze(0), pc_t[:, :3].unsqueeze(0))
+            # Find nearest neighbors in pc_prev using faiss
+            # 3 dimensions
+            cpu_index = faiss.IndexFlatL2(3)
+            gpu_index = faiss.index_cpu_to_all_gpus(cpu_index)
+
+            # add previous point cloud to index
+            gpu_index.add(pc_prev[:,:3].unsqueeze(0))
+
+            k=1
+            _,nearest_neighbor_idx = gpu_index.search(pc_t[:,:3].unsqueeze(0),k)
+
+
+            #_, nearest_neighbor_idx = knn_module(pc_prev[:, :3].unsqueeze(0), pc_t[:, :3].unsqueeze(0))
 
             # Get nearest neighbors from pc_prev using the indices
             nearest_neighbors = pc_prev[nearest_neighbor_idx].squeeze(-2) - pc_t.unsqueeze(0)
@@ -186,25 +224,6 @@ def P2Net_collatn(item, model=None, device='cuda'):
 
     del pc_t, pc_prev
     # -----------------------------------------------------------------Nearest Neighbor------------------------------------------
-
-    #-----------------------------------------------------------------Point Bert-------------------------------------------------
-    # batch up the point_clouds
-    points_pb = points_clouds.reshape(-1, num_points, 4)[:, :, 0:3] # (batch_size * num_seq, num_points, 3)
-    points_pb = points_pb.cpu().data.numpy()
-    points_pb[:, :, 0:3] = provider.random_scale_point_cloud(points_pb[:, :, 0:3])
-    points_pb[:, :, 0:3] = provider.shift_point_cloud(points_pb[:, :, 0:3])
-    points_pb = torch.Tensor(points_pb)
-    points_pb = points_pb.float().to(device)
-
-    # get the model predict for every point clouds
-    points_pb = points_pb.transpose(2, 1)
-    seg_pred, _ = model(points_pb, None) #(batch_size * num_seq, num_points, cls_num)
-
-    seg_pred = seg_pred.reshape(batch_size, num_seq, num_points, -1)
-    seg_pred = seg_pred.permute(0, 2, 1, 3).contiguous()
-    seg_pred = seg_pred.reshape(batch_size, num_points, -1).cpu()
-    #-----------------------------------------------------------------Point Bert-------------------------------------------------
-
 
 
     # concat the prediction and the nearst neighbor info
