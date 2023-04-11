@@ -7,7 +7,7 @@ import segmentation.provider as provider
 import torch.nn as nn
 import numpy as np
 import open3d as o3d
-from knn_cuda import KNN
+#from knn_cuda import KNN
 import faiss
 
 """import matplotlib.pyplot as plt
@@ -159,12 +159,12 @@ def P2Net_collatn(item, model=None, device='cuda'):
 
     point_clouds = [tmp_point for tmp_points in point_clouds for tmp_point in tmp_points]
 
-    points_clouds = torch.stack([torch.Tensor(point_cloud) for point_cloud in point_clouds]).reshape(batch_size,num_seq,num_points,-1).float().to(device)
+    points_clouds = torch.stack([torch.Tensor(point_cloud) for point_cloud in point_clouds]).reshape(batch_size,num_seq,num_points,-1).float()
 
     # -----------------------------------------------------------------Point Bert-------------------------------------------------
     # batch up the point_clouds
     points_pb = points_clouds.reshape(-1, num_points, 4)[:, :, 0:3]  # (batch_size * num_seq, num_points, 3)
-    points_pb = points_pb.cpu().data.numpy()
+    points_pb = points_pb.numpy()
     points_pb[:, :, 0:3] = provider.random_scale_point_cloud(points_pb[:, :, 0:3])
     points_pb[:, :, 0:3] = provider.shift_point_cloud(points_pb[:, :, 0:3])
     points_pb = torch.Tensor(points_pb)
@@ -174,9 +174,9 @@ def P2Net_collatn(item, model=None, device='cuda'):
     points_pb = points_pb.transpose(2, 1)
     seg_pred, _ = model(points_pb, None)  # (batch_size * num_seq, num_points, cls_num)
 
-    seg_pred = seg_pred.reshape(batch_size, num_seq, num_points, -1)
-    seg_pred = seg_pred.permute(0, 2, 1, 3).contiguous()
-    seg_pred = seg_pred.reshape(batch_size, num_points, -1).cpu()
+    seg_pred = seg_pred.reshape(batch_size, num_seq, num_points, -1).cpu()
+    #seg_pred = seg_pred.permute(0, 2, 1, 3).contiguous()
+    #seg_pred = seg_pred.reshape(batch_size, num_points, -1).cpu()
     # -----------------------------------------------------------------Point Bert-------------------------------------------------
 
     # -----------------------------------------------------------------Nearest Neighbor------------------------------------------
@@ -185,18 +185,22 @@ def P2Net_collatn(item, model=None, device='cuda'):
     point_clouds = align(point_clouds)
 
     # Instantiate KNN module
-    knn_module = KNN(k=1, transpose_mode=True)
+    #knn_module = KNN(k=1, transpose_mode=True)
 
     # Initialize the result tensor
-    result = torch.zeros(batch_size, num_points, 4 * num_seq)
+    # result should have (3xnum_classes) + 11 features for each point
+    result = torch.zeros(batch_size, num_points, 68)
 
     # get num gpus
     num_gpus = faiss.get_num_gpus()
+    #print('faiss using num_gpus: ' + str(num_gpus))
 
     for b in range(batch_size):
-        pc_t = points_clouds[b, 0].cuda()
+        batch_features = []
+        pc_t = points_clouds[b, 0]
+
         for i in range(1, num_seq):
-            pc_prev = points_clouds[b, i].cuda()
+            pc_prev = points_clouds[b, i]
 
             # Find nearest neighbors in pc_prev using faiss
             # 3 dimensions
@@ -204,30 +208,59 @@ def P2Net_collatn(item, model=None, device='cuda'):
             gpu_index = faiss.index_cpu_to_all_gpus(cpu_index)
 
             # add previous point cloud to index
-            gpu_index.add(pc_prev[:,:3].unsqueeze(0))
+            #print('pc_prev shape: ' + str(pc_prev.shape))
+            #print('pc_t shape: ' + str(pc_t.shape))
+
+            gpu_index.add(pc_prev[:,:3].contiguous().numpy())
 
             k=1
-            _,nearest_neighbor_idx = gpu_index.search(pc_t[:,:3].unsqueeze(0),k)
-
+            dist,nearest_neighbor_idx = gpu_index.search(pc_t[:,:3].contiguous().numpy(),k)
+            nearest_neighbor_idx = nearest_neighbor_idx.squeeze(-1)
+            #print('nearest neighbor idx shape: ' + str(nearest_neighbor_idx.shape))
+            #print('nearest neighbor dist shape: ' + str(dist.shape))
 
             #_, nearest_neighbor_idx = knn_module(pc_prev[:, :3].unsqueeze(0), pc_t[:, :3].unsqueeze(0))
 
             # Get nearest neighbors from pc_prev using the indices
-            nearest_neighbors = pc_prev[nearest_neighbor_idx].squeeze(-2) - pc_t.unsqueeze(0)
-            nearest_neighbor_idx = nearest_neighbor_idx.squeeze(0).squeeze(-1)
-            points_clouds[b, i] = pc_prev.index_select(0, nearest_neighbor_idx)
+            nearest_neighbors = pc_prev[nearest_neighbor_idx]
+            #print('nearest neighbors shape: ' + str(nearest_neighbors.shape))
+            # computing delta p from paper
+            #(x,y,z,0) for frame t
+            raw_points =torch.cat((pc_t[:,:3],torch.zeros(num_points).unsqueeze(-1)),dim=-1)
+            #print('raw points shape: ' + str(raw_points.shape))
+            nearest_neighbors = nearest_neighbors - raw_points
+            #print('delta p shape: ' + str(nearest_neighbors.shape))
+            # concatenating distances as mentioned in paper
+            nearest_neighbors = torch.cat((nearest_neighbors,torch.Tensor(dist)),dim=-1)
+            # concatenating probability scores
+            seg_pred_t = seg_pred[b,i,nearest_neighbor_idx,:]
+            #print('seg_pred_t shape: ' + str(seg_pred_t.shape))
+            nearest_neighbors = torch.cat((nearest_neighbors,seg_pred_t),dim=-1)
+            #print('single time feature shape: ' + str(nearest_neighbors.shape))
 
-            # Concatenate pc_t with nearest neighbors
-            result[b, :, 4 * i:4 * (i + 1)] = nearest_neighbors.cpu()
+            batch_features.append(nearest_neighbors)
 
-        result[b, :, :4] = points_clouds[b, 0]
+        #result[b, :, :4] = points_clouds[b, 0]
+        # adding current timestep features to the batch
+        current_timestep_reflectance = pc_t[:,-1].unsqueeze(-1)
+        #print('current_timestep_reflectances shape: ' + str(current_timestep_reflectance.shape))
+        current_timestep_pred = seg_pred[b,0,:,:]
+        #print('current_timestep_pred shape: ' + str(current_timestep_pred.shape))
+        batch_features.append(torch.concat((current_timestep_reflectance,current_timestep_pred),dim=-1))
+        # concatenating all features together for every point
+        batch_features = torch.concat(batch_features,dim=-1)
+        #print('features for entire batch: ' + str(batch_features.shape))
+
+        # adding this batch feature to the result
+        result[b] = batch_features
 
     del pc_t, pc_prev
     # -----------------------------------------------------------------Nearest Neighbor------------------------------------------
 
 
     # concat the prediction and the nearst neighbor info
-    input_seq = torch.cat((seg_pred, result), dim=-1) # ( batch_size, num_points, 4*(num_seq + class_num) )
+    #input_seq = torch.cat((seg_pred, result), dim=-1) # ( batch_size, num_points, 4*(num_seq + class_num) )
+    input_seq = result
 
     return {
         'input_seq': input_seq,
@@ -256,3 +289,4 @@ if __name__ == '__main__':
 
     for i, item in enumerate(loader):
         print(item)
+        print(item['input_seq'].shape)
