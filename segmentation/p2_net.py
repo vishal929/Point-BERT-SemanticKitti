@@ -82,6 +82,9 @@ def trainP2():
     torch.cuda.empty_cache()
     model.eval()
 
+    # multiple gpu training
+    model = torch.nn.DataParallel(model).cuda()
+
     dataset = P2Net_Dataset(npoints=npoints, num_seq=num_seq)
 
     collate_fn = functools.partial(P2Net_collatn, model=model)
