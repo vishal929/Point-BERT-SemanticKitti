@@ -99,10 +99,10 @@ def trainP2():
     for epoch in range(num_epochs):
         print('on training epoch: ' + str(epoch))
         running_loss = 0.0
-        for i, (input_seq,labels) in tqdm(enumerate(loader),total=len(loader),smoothing=0.9):
+        for i, item in tqdm(enumerate(loader),total=len(loader),smoothing=0.9):
             optimizer.zero_grad()
-            input_seq = input_seq.to(device)
-            labels = labels.to(device)
+            input_seq = item['input_seq'].to(device)
+            labels = item['labels'].to(device)
 
             outputs = p2(input_seq).view(batch_size*npoints, num_classes)
             # import pdb; pdb.set_trace()
