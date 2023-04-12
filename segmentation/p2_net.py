@@ -10,6 +10,8 @@ from segmentation.models.PointTransformer import get_model
 from segmentation.data_utils.P2NetDataset import P2Net_Dataset, P2Net_collatn
 from segmentation.train_kitti import inplace_relu
 
+from tqdm import tqdm
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Using device:', device)
 
@@ -95,11 +97,12 @@ def trainP2():
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
     for epoch in range(num_epochs):
+        print('on training epoch: ' + str(epoch))
         running_loss = 0.0
-        for i, item in enumerate(loader):
+        for i, (input_seq,labels) in tqdm(enumerate(loader),total=len(loader),smoothing=0.9):
             optimizer.zero_grad()
-            input_seq = item['input_seq'].to(device)
-            labels = item['labels'].to(device)
+            input_seq = input_seq.to(device)
+            labels = labels.to(device)
 
             outputs = p2(input_seq).view(batch_size*npoints, num_classes)
             # import pdb; pdb.set_trace()
