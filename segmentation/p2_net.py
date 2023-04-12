@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 
 from segmentation.models.PointTransformer import get_model
 from segmentation.data_utils.P2NetDataset import P2Net_Dataset, P2Net_collatn
-from train_kitti import inplace_relu
+from segmentation.train_kitti import inplace_relu
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Using device:', device)
