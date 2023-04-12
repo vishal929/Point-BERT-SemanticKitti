@@ -56,7 +56,7 @@ def trainP2():
     num_classes = 19
     group_size = 32
     num_groups = 2048
-    batch_size = 1
+    batch_size = 2
     num_seq = 3
     lr= 0.003
     num_epochs = 10
