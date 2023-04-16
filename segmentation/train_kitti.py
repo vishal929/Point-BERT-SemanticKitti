@@ -277,10 +277,10 @@ def train():
                     total_class_seen += torch.sum(one_hot_label,dim=0).cpu()
 
                 # computing total accuracy, class-wise accuracy, class-wise IoU, and total mIoU
-                total_accuracy = torch.sum(true_positive)/torch.sum(total_class_seen)
-                class_accuracy = true_positive/total_class_seen
+                total_accuracy = torch.nan_to_num(torch.sum(true_positive)/torch.sum(total_class_seen))
+                class_accuracy = torch.nan_to_num(true_positive/total_class_seen)
 
-                class_iou = true_positive/ (true_positive + false_negative + false_positive)
+                class_iou = torch.nan_to_num(true_positive/ (true_positive + false_negative + false_positive))
                 total_miou = torch.sum(class_iou)/num_classes
 
                 test_metrics['accuracy'] = total_accuracy
