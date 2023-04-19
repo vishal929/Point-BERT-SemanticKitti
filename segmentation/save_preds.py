@@ -30,7 +30,7 @@ def generate_preds():
 
     # obtaining torch dataset for training
     npoints = 50000
-    train = SemanticKitti(split='test', npoints=npoints, return_files=True)
+    train = SemanticKitti(split='train', npoints=npoints, return_files=True)
 
     # we have 19 usable classes (class 0 is omitted for training and eval)
     num_classes = len(train.inv_map) - 1
@@ -82,7 +82,7 @@ def generate_preds():
     model = model.cuda()
 
     # number of epochs is how many samples we generate
-    num_epochs = 2
+    num_epochs = 1
     for epoch_num in range(num_epochs):
         with torch.no_grad():
             model = model.eval()
