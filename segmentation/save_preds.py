@@ -103,8 +103,8 @@ def generate_preds():
                        'points': points[i],
                        'labels': label[i],
                        'pred':seg_pred[i],
-                       'point_file':point_files[i],
-                       'label_file':label_files[i],
+                       #'point_file':point_files[i], dont need to save this
+                       #'label_file':label_files[i], dont need to save this
                    }
                    # getting sequence number
                    sequence = point_files[i]
