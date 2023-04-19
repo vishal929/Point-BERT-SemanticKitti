@@ -100,9 +100,9 @@ def generate_preds():
 
                 for i in range(cur_batch_size):
                    save_obj = {
-                       'points': points[i],
-                       'labels': label[i],
-                       'pred':seg_pred[i],
+                       'points': points[i].clone(),
+                       'labels': label[i].clone(),
+                       'pred':seg_pred[i].clone(),
                        #'point_file':point_files[i], dont need to save this
                        #'label_file':label_files[i], dont need to save this
                    }
