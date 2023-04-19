@@ -7,6 +7,7 @@ import segmentation.provider as provider
 import torch.nn as nn
 import numpy as np
 import open3d as o3d
+from pathlib import Path
 #from knn_cuda import KNN
 import faiss
 
@@ -266,6 +267,129 @@ def P2Net_collatn(item, model=None, device='cuda'):
         'input_seq': input_seq,
         'labels': labels
     }
+
+# version of the dataset after saving predictions (to speed up training)
+class SavedP2NetTraining(data.Dataset):
+    # saved_preds_path is the path to the root of saved predictions containing all the scenes and frames
+    def __init__(self, saved_preds_path, num_points=50000):
+        self.num_points = num_points
+        # we want to grab the list of every frame which has 2 previous scenes
+        # globbing for the 1.pt files
+        file_list = Path.glob(Path(saved_preds_path),'*/*/1.pt')
+
+        # filtering out filepaths with frame # 0000 or 00001 (these will not have 2 previous frames)
+        filtered_file_list = []
+        for file in file_list:
+            frame_num = int(file.parts[-1])
+            if frame_num == 0 or frame_num==1:
+                # dont add these
+                filtered_file_list.append(file)
+        self.files = filtered_file_list
+
+    def __getitem__(self, index):
+        # 1) pick a file from the file list
+        # 2) get previous 2 frames of preds
+        # 3) apply knn and concatenation to get a size 68 vector (3x19 + 11)
+        # 4) return the feature vector
+
+        # picking a file from the list
+        selected_file = self.files[index]
+
+        # getting 3 frames of data [current, current-1, current-2]
+        frame_number = int(selected_file.parts[-1])
+        sequence_root = selected_file.parent.parent
+
+        frame_prev = frame_number -1
+        frame_prev_prev = frame_number-2
+
+        # padding with zeros to get 6 digits
+        frame_number = str(frame_number)
+        frame_prev = str(frame_prev)
+        frame_prev_prev = str(frame_prev_prev)
+        while len(frame_number)!=6:
+            frame_number = '0' + frame_number
+        while len(frame_prev) != 6:
+            frame_prev = '0' + frame_prev
+        while len(frame_prev_prev) !=6:
+            frame_prev_prev = '0' + frame_prev_prev
+
+        frame_prev = sequence_root.joinpath(frame_prev)
+        frame_prev_prev= sequence_root.joinpath(frame_prev_prev)
+
+        # getting pytorch data
+        # data object has keys 'points', 'labels' 'pred'
+        curr_data = torch.load(selected_file)
+        prev_data = torch.load(frame_prev)
+        prev_prev_data = torch.load(frame_prev_prev)
+
+        pc = [curr_data['points'].numpy(),prev_data['points'].numpy(),prev_prev_data['points'].numpy()]
+        # aligning the points clouds
+        pc = align(pc)
+
+        # grabbing predictions
+        seg_pred = torch.stack([curr_data['pred'],prev_data['pred'],prev_prev_data['pred']]) # (3,num_points,19)
+
+        # knn and generating features
+        features = []
+        pc_t = pc[0]
+
+        for i in range(1, 3):
+            pc_prev = pc[i]
+
+            # Find nearest neighbors in pc_prev using faiss
+            # 3 dimensions
+            cpu_index = faiss.IndexFlatL2(3)
+            gpu_index = faiss.index_cpu_to_all_gpus(cpu_index)
+
+            # add previous point cloud to index
+            # print('pc_prev shape: ' + str(pc_prev.shape))
+            # print('pc_t shape: ' + str(pc_t.shape))
+
+            gpu_index.add(pc_prev[:, :3].contiguous().numpy())
+
+            k = 1
+            dist, nearest_neighbor_idx = gpu_index.search(pc_t[:, :3].contiguous().numpy(), k)
+            nearest_neighbor_idx = nearest_neighbor_idx.squeeze(-1)
+            # print('nearest neighbor idx shape: ' + str(nearest_neighbor_idx.shape))
+            # print('nearest neighbor dist shape: ' + str(dist.shape))
+
+            # _, nearest_neighbor_idx = knn_module(pc_prev[:, :3].unsqueeze(0), pc_t[:, :3].unsqueeze(0))
+
+            # Get nearest neighbors from pc_prev using the indices
+            nearest_neighbors = pc_prev[nearest_neighbor_idx]
+            # print('nearest neighbors shape: ' + str(nearest_neighbors.shape))
+            # computing delta p from paper
+            # (x,y,z,0) for frame t
+            raw_points = torch.cat((pc_t[:, :3], torch.zeros(self.num_points).unsqueeze(-1)), dim=-1)
+            # print('raw points shape: ' + str(raw_points.shape))
+            nearest_neighbors = nearest_neighbors - raw_points
+            # print('delta p shape: ' + str(nearest_neighbors.shape))
+            # concatenating distances as mentioned in paper
+            nearest_neighbors = torch.cat((nearest_neighbors, torch.Tensor(dist)), dim=-1)
+            # concatenating probability scores
+            seg_pred_t = seg_pred[i, nearest_neighbor_idx, :]
+            # print('seg_pred_t shape: ' + str(seg_pred_t.shape))
+            nearest_neighbors = torch.cat((nearest_neighbors, seg_pred_t), dim=-1)
+            # print('single time feature shape: ' + str(nearest_neighbors.shape))
+
+            features.append(nearest_neighbors)
+
+        # result[b, :, :4] = points_clouds[b, 0]
+        # adding current timestep features to the batch
+        current_timestep_reflectance = pc_t[:, -1].unsqueeze(-1)
+        # print('current_timestep_reflectances shape: ' + str(current_timestep_reflectance.shape))
+        current_timestep_pred = seg_pred[0, :, :]
+        # print('current_timestep_pred shape: ' + str(current_timestep_pred.shape))
+        features.append(torch.concat((current_timestep_reflectance, current_timestep_pred), dim=-1))
+        # concatenating all features together for every point
+        features = torch.concat(features, dim=-1)
+        # print('features : ' + str(features.shape))
+
+        # returning the feature vector for this timestep
+        return features
+
+    def __len__(self):
+        return len(self.files)
 
 # a fake model to test the dataset
 class test_Model(nn.Module):
