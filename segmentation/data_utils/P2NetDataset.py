@@ -385,8 +385,8 @@ class SavedP2NetTraining(data.Dataset):
         features = torch.concat(features, dim=-1)
         # print('features : ' + str(features.shape))
 
-        # returning the feature vector for this timestep
-        return features
+        # returning the feature vector for this timestep and the labels
+        return features, torch.Tensor(curr_data['labels'],type=torch.float32)
 
     def __len__(self):
         return len(self.files)
