@@ -337,6 +337,14 @@ class SavedP2NetTraining(data.Dataset):
         prev_data = torch.load(frame_prev,map_location='cpu')
         prev_prev_data = torch.load(frame_prev_prev,map_location='cpu')
 
+        print('curr_points shape: ' +str(curr_data['points'].shape))
+        print('prev points shape: '+ str(prev_data['points'].shape))
+        print('prev prev points shape: ' + str(prev_prev_data['points'].shape))
+
+        print('curr pred shape: ' + str(curr_data['pred'].shape))
+        print('prev pred shape: ' + str(prev_data['pred'].shape))
+        print('prev prev pred shape: ' + str(prev_prev_data['pred'].shape))
+
         pc = [curr_data['points'].contiguous().numpy(),
               prev_data['points'].contiguous().numpy(),
               prev_prev_data['points'].contiguous().numpy()]
