@@ -148,6 +148,13 @@ def trainP2Saved():
             correct = pred_choice.eq(labels.view(-1)).type(torch.int32).sum().cpu()
             mean_correct.append(correct.item() / (train_batch_size * npoints))
             running_loss += loss.item()
+
+            # removing stray items
+            del(features)
+            del(labels)
+            del(pred_choice)
+            del(preds)
+            torch.cuda.empty_cache()
         epoch_loss = running_loss / batch_size
         print('Epoch %d loss: %.3f' % (epoch + 1, epoch_loss))
         # reporting train accuracy
