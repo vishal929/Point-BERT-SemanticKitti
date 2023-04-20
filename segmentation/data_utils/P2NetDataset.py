@@ -337,7 +337,9 @@ class SavedP2NetTraining(data.Dataset):
         prev_data = torch.load(frame_prev,map_location='cpu')
         prev_prev_data = torch.load(frame_prev_prev,map_location='cpu')
 
-        pc = [curr_data['points'].numpy(),prev_data['points'].numpy(),prev_prev_data['points'].numpy()]
+        pc = [curr_data['points'].contiguous().numpy(),
+              prev_data['points'].contiguous().numpy(),
+              prev_prev_data['points'].contiguous().numpy()]
         # aligning the points clouds
         pc = align(pc)
 
@@ -346,10 +348,10 @@ class SavedP2NetTraining(data.Dataset):
 
         # knn and generating features
         features = []
-        pc_t = pc[0]
+        pc_t = torch.Tensor(pc[0])
 
         for i in range(1, 3):
-            pc_prev = pc[i]
+            pc_prev = torch.Tensor(pc[i])
 
             # Find nearest neighbors in pc_prev using faiss
             # 3 dimensions
