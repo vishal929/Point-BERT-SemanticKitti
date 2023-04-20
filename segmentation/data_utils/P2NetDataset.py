@@ -271,8 +271,11 @@ def P2Net_collatn(item, model=None, device='cuda'):
 # version of the dataset after saving predictions (to speed up training)
 class SavedP2NetTraining(data.Dataset):
     # saved_preds_path is the path to the root of saved predictions containing all the scenes and frames
-    def __init__(self, saved_preds_path, num_points=50000):
+    def __init__(self, saved_preds_path, num_points=50000, get_features=False):
         self.num_points = num_points
+        # if get_features is True, then we have supplied a data root which contains the feature vectors (not the saved preds!)
+        # this means each 1.pt file has a p2 feature vector of shape 68 (total shape 50000,68) and of course the labels
+        self.get_features = get_features
         # we want to grab the list of every frame which has 2 previous scenes
         # globbing for the 1.pt files
         file_list = Path.glob(Path(saved_preds_path),'*/*/1.pt')
@@ -289,6 +292,10 @@ class SavedP2NetTraining(data.Dataset):
         self.files = filtered_file_list
 
     def __getitem__(self, index):
+        # check if we are getting features, otherwise we do below steps to generate features
+        if self.get_features:
+            curr_data = torch.load(self.files[index],map_location='cpu')
+            return curr_data['features'],curr_data['labels']
         # 1) pick a file from the file list
         # 2) get previous 2 frames of preds
         # 3) apply knn and concatenation to get a size 68 vector (3x19 + 11)
