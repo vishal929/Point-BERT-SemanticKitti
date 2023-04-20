@@ -132,8 +132,8 @@ def trainP2Saved():
             features = features.to(device)
             labels = labels.to(device)
 
-            print('features shape: '+ str(features))
-            print('labels shape: ' + str(labels))
+            print('features shape: '+ str(features.shape))
+            print('labels shape: ' + str(labels.shape))
             preds = p2(features).view(train_batch_size * npoints, num_classes)
             print('p2 preds shape: ' + str(preds.shape))
             # import pdb; pdb.set_trace()
