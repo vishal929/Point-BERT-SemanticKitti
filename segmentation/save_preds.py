@@ -30,7 +30,7 @@ def generate_preds():
 
     # obtaining torch dataset for training
     npoints = 50000
-    train = SemanticKitti(split='train', npoints=npoints, return_files=True)
+    train = SemanticKitti(split='train', npoints=npoints, return_files=True, return_reflectance=True)
 
     # we have 19 usable classes (class 0 is omitted for training and eval)
     num_classes = len(train.inv_map) - 1
