@@ -137,8 +137,10 @@ def trainP2Saved():
             loss.backward()
             optimizer.step()
 
+            pred_choice = torch.argmax(preds,dim=-1)
+
             # getting training accuracy
-            correct = preds.eq(labels).type(torch.int32).sum().cpu()
+            correct = pred_choice.eq(labels).type(torch.int32).sum().cpu()
             mean_correct.append(correct.item() / (train_batch_size * npoints))
             running_loss += loss.item()
         epoch_loss = running_loss / batch_size
