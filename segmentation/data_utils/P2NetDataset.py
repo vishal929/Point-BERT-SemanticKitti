@@ -280,7 +280,7 @@ class SavedP2NetTraining(data.Dataset):
         # filtering out filepaths with frame # 0000 or 00001 (these will not have 2 previous frames)
         filtered_file_list = []
         for file in file_list:
-            frame_num = int(file.parts[-2])
+            frame_num = int(file.parent.name)
             if frame_num == 0 or frame_num==1:
                 # dont add these
                 filtered_file_list.append(file)
@@ -296,7 +296,7 @@ class SavedP2NetTraining(data.Dataset):
         selected_file = self.files[index]
 
         # getting 3 frames of data [current, current-1, current-2]
-        frame_number = int(selected_file.parts[-2])
+        frame_number = int(selected_file.parent.name)
         sequence_root = selected_file.parent.parent
 
         frame_prev = frame_number -1
