@@ -302,10 +302,16 @@ class SavedP2NetTraining(data.Dataset):
         frame_prev = frame_number -1
         frame_prev_prev = frame_number-2
 
+
+        print('int frame number: ' + str(frame_number))
+        print('int prev frame number: ' + str(frame_prev))
+        print('int prev prev number: ' + str(frame_prev_prev))
+
         # padding with zeros to get 6 digits
         frame_number = str(frame_number)
         frame_prev = str(frame_prev)
         frame_prev_prev = str(frame_prev_prev)
+
         while len(frame_number)!=6:
             frame_number = '0' + frame_number
         while len(frame_prev) != 6:
@@ -313,8 +319,15 @@ class SavedP2NetTraining(data.Dataset):
         while len(frame_prev_prev) !=6:
             frame_prev_prev = '0' + frame_prev_prev
 
+        print('str frame number: ' + str(frame_number))
+        print('str prev frame number: ' + str(frame_prev))
+        print('str prev prev number: ' + str(frame_prev_prev))
+
         frame_prev = sequence_root.joinpath(frame_prev,'1.pt')
         frame_prev_prev= sequence_root.joinpath(frame_prev_prev,'1.pt')
+
+        print('str prev frame path: ' + str(frame_prev))
+        print('str prev prev path: ' + str(frame_prev_prev))
 
         # getting pytorch data
         # data object has keys 'points', 'labels' 'pred'
