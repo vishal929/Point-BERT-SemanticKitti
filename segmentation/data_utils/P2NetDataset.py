@@ -356,7 +356,7 @@ class SavedP2NetTraining(data.Dataset):
         # grabbing predictions
         seg_pred = torch.stack([curr_data['pred'],prev_data['pred'],prev_prev_data['pred']]) # (3,num_points,19)
 
-        print('seg pred shape: ' + str(seg_pred))
+        #print('seg pred shape: ' + str(seg_pred))
 
         # knn and generating features
         features = []
@@ -389,7 +389,7 @@ class SavedP2NetTraining(data.Dataset):
             # print('nearest neighbors shape: ' + str(nearest_neighbors.shape))
             # computing delta p from paper
             # (x,y,z,0) for frame t
-            print('pc_t[:,:3] shape: ' + str(pc_t[:,:3].shape))
+            #print('pc_t[:,:3] shape: ' + str(pc_t[:,:3].shape))
             raw_points = torch.cat((pc_t[:, :3], torch.zeros(self.num_points).unsqueeze(-1)), dim=-1)
             # print('raw points shape: ' + str(raw_points.shape))
             nearest_neighbors = nearest_neighbors - raw_points
@@ -413,7 +413,7 @@ class SavedP2NetTraining(data.Dataset):
         features.append(torch.concat((current_timestep_reflectance, current_timestep_pred), dim=-1))
         # concatenating all features together for every point
         features = torch.concat(features, dim=-1)
-        print('features : ' + str(features.shape))
+        #print('features : ' + str(features.shape))
 
         # returning the feature vector for this timestep and the labels
         return features, curr_data['labels']
