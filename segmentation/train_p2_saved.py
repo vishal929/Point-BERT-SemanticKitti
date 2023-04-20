@@ -55,7 +55,7 @@ class p2_net(nn.Module):
         return x
 
 
-def trainP2():
+def trainP2Saved():
     # pytorch optimizations
     torch.backends.cuda.matmul.allow_tf32 = True
     torch.backends.cudnn.allow_tf32 = True
