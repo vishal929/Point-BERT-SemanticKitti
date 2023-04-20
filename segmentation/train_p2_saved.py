@@ -131,13 +131,18 @@ def trainP2Saved():
             # features is of shape (batch,npoints,68)
             features = features.to(device)
             labels = labels.to(device)
+
+            print('features shape: '+ str(features))
+            print('labels shape: ' + str(labels))
             preds = p2(features).view(train_batch_size * npoints, num_classes)
+            print('p2 preds shape: ' + str(preds.shape))
             # import pdb; pdb.set_trace()
             loss = criterion(preds, labels.view(-1))
             loss.backward()
             optimizer.step()
 
             pred_choice = torch.argmax(preds,dim=-1)
+            print('pred choice shape: ' + str(pred_choice.shape))
 
             # getting training accuracy
             correct = pred_choice.eq(labels).type(torch.int32).sum().cpu()
