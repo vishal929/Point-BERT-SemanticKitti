@@ -130,6 +130,7 @@ def trainP2Saved():
 
             # features is of shape (batch,npoints,68)
             features = features.to(device)
+            labels = labels.to(device)
             preds = p2(features).view(train_batch_size * npoints, num_classes)
             # import pdb; pdb.set_trace()
             loss = criterion(preds, labels.view(-1))
