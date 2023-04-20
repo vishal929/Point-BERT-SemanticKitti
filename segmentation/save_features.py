@@ -8,6 +8,7 @@ from Constants.constants import ROOT_DIR
 import os
 
 from tqdm import tqdm
+from pathlib import Path
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Using device:', device)
@@ -48,7 +49,7 @@ def saveP2Features():
                     'features': features[i].clone(),
                     'labels': labels[i].clone(),
                 }
-                file = save_pred_file[i]
+                file = Path(save_pred_file[i])
                 # getting sequence number
                 sequence = file.parent.parent.name
                 # getting the frame number  without the '.bin'

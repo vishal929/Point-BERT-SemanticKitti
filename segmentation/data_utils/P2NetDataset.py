@@ -423,7 +423,7 @@ class SavedP2NetTraining(data.Dataset):
         #print('features : ' + str(features.shape))
 
         # returning the feature vector for this timestep and the labels and the filename (so we can save it)
-        return features, curr_data['labels'], self.files[index]
+        return features, curr_data['labels'], str(self.files[index])
 
     def __len__(self):
         return len(self.files)
