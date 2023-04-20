@@ -348,9 +348,9 @@ class SavedP2NetTraining(data.Dataset):
         '''
 
         # points are given as (3,npoints) so we transpose to get (npoints,3)
-        pc = [curr_data['points'].transpose().contiguous().numpy(),
-              prev_data['points'].transpose().contiguous().numpy(),
-              prev_prev_data['points'].transpose().contiguous().numpy()]
+        pc = [curr_data['points'].transpose(1,0).contiguous().numpy(),
+              prev_data['points'].transpose(1,0).contiguous().numpy(),
+              prev_prev_data['points'].transpose(1,0).contiguous().numpy()]
         # aligning the points clouds
         pc = align(pc)
 
