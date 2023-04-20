@@ -337,6 +337,7 @@ class SavedP2NetTraining(data.Dataset):
         prev_data = torch.load(frame_prev,map_location='cpu')
         prev_prev_data = torch.load(frame_prev_prev,map_location='cpu')
 
+        '''
         print('curr_points shape: ' +str(curr_data['points'].shape))
         print('prev points shape: '+ str(prev_data['points'].shape))
         print('prev prev points shape: ' + str(prev_prev_data['points'].shape))
@@ -344,15 +345,18 @@ class SavedP2NetTraining(data.Dataset):
         print('curr pred shape: ' + str(curr_data['pred'].shape))
         print('prev pred shape: ' + str(prev_data['pred'].shape))
         print('prev prev pred shape: ' + str(prev_prev_data['pred'].shape))
+        '''
 
-        pc = [curr_data['points'].contiguous().numpy(),
-              prev_data['points'].contiguous().numpy(),
-              prev_prev_data['points'].contiguous().numpy()]
+        pc = [curr_data['points'].transpose(2,1).contiguous().numpy(),
+              prev_data['points'].transpose(2,1).contiguous().numpy(),
+              prev_prev_data['points'].transpose(2,1).contiguous().numpy()]
         # aligning the points clouds
         pc = align(pc)
 
         # grabbing predictions
         seg_pred = torch.stack([curr_data['pred'],prev_data['pred'],prev_prev_data['pred']]) # (3,num_points,19)
+
+        print('seg pred shape: ' + str(seg_pred))
 
         # knn and generating features
         features = []
@@ -409,7 +413,7 @@ class SavedP2NetTraining(data.Dataset):
         features.append(torch.concat((current_timestep_reflectance, current_timestep_pred), dim=-1))
         # concatenating all features together for every point
         features = torch.concat(features, dim=-1)
-        # print('features : ' + str(features.shape))
+        print('features : ' + str(features.shape))
 
         # returning the feature vector for this timestep and the labels
         return features, torch.Tensor(curr_data['labels'],type=torch.float32)
