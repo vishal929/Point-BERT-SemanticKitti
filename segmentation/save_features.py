@@ -1,13 +1,6 @@
-import functools
-from easydict import EasyDict
 
 import torch
-import torch.nn as nn
-import torch.optim as optim
 from torch.utils.data import DataLoader
-import torch.nn.functional as F
-
-import numpy as np
 
 from segmentation.data_utils.P2NetDataset import SavedP2NetTraining
 
@@ -23,7 +16,7 @@ print('Using device:', device)
 
 
 
-def save_features():
+def saveP2Features():
     # pytorch optimizations
     torch.backends.cuda.matmul.allow_tf32 = True
     torch.backends.cudnn.allow_tf32 = True
