@@ -89,10 +89,14 @@ def generate_preds():
 
             for batch_id, (points, label, point_files, label_files) in tqdm(enumerate(train_loader), total=len(train_loader), smoothing=0.9):
                 cur_batch_size, NUM_POINT, _ = points.size()
-                points, label = points.float().cuda(), label.long().cuda()
+                label = label.long().cuda()
+                # we remove remission for running pointbert
+                pred_points = points[:,:,:-1].float().cuda()
 
-                points = points.transpose(2, 1)
-                seg_pred, _ = model(points, None)
+                label = label.long().cuda()
+
+                pred_points = pred_points.transpose(2, 1)
+                seg_pred, _ = model(pred_points, None)
 
                 # saving predictions along with points in their own sequence folder
                 # i.e
