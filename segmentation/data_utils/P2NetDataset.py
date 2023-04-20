@@ -296,7 +296,7 @@ class SavedP2NetTraining(data.Dataset):
         selected_file = self.files[index]
 
         # getting 3 frames of data [current, current-1, current-2]
-        frame_number = int(selected_file.parts[-1])
+        frame_number = int(selected_file.parts[-2])
         sequence_root = selected_file.parent.parent
 
         frame_prev = frame_number -1
@@ -313,8 +313,8 @@ class SavedP2NetTraining(data.Dataset):
         while len(frame_prev_prev) !=6:
             frame_prev_prev = '0' + frame_prev_prev
 
-        frame_prev = sequence_root.joinpath(frame_prev)
-        frame_prev_prev= sequence_root.joinpath(frame_prev_prev)
+        frame_prev = sequence_root.joinpath(frame_prev,'1.pt')
+        frame_prev_prev= sequence_root.joinpath(frame_prev_prev,'1.pt')
 
         # getting pytorch data
         # data object has keys 'points', 'labels' 'pred'
