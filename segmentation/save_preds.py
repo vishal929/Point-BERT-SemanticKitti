@@ -91,7 +91,7 @@ def generate_preds():
                 cur_batch_size, NUM_POINT, _ = points.size()
                 label = label.long().cuda()
                 # we remove remission for running pointbert
-                pred_points = points[:,:,:-1].float().cuda()
+                pred_points = points[:,:,:3].float().cuda()
 
                 label = label.long().cuda()
 
