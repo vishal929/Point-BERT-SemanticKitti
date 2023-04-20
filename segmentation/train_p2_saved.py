@@ -73,7 +73,7 @@ def trainP2Saved():
     num_epochs = 40
 
     # can train with larger batch size on saved preds
-    train_batch_size = 16
+    train_batch_size = 32
 
     p2 = p2_net(q=num_classes).to(device)
 
