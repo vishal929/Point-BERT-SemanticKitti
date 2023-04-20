@@ -31,6 +31,10 @@ def save_features():
     # creating path to save features for training
     features_dir = os.path.join(ROOT_DIR,'segmentation','Saved_Features')
 
+    # check if this path exists or not
+    if not os.path.exists(features_dir):
+        os.mkdir(features_dir)
+
     npoints = 50000
     num_classes = 19
     num_seq = 3
