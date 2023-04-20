@@ -377,6 +377,7 @@ class SavedP2NetTraining(data.Dataset):
             # print('nearest neighbors shape: ' + str(nearest_neighbors.shape))
             # computing delta p from paper
             # (x,y,z,0) for frame t
+            print('pc_t[:,:3] shape: ' + str(pc_t[:,:3].shape))
             raw_points = torch.cat((pc_t[:, :3], torch.zeros(self.num_points).unsqueeze(-1)), dim=-1)
             # print('raw points shape: ' + str(raw_points.shape))
             nearest_neighbors = nearest_neighbors - raw_points
