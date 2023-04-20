@@ -73,7 +73,7 @@ def trainP2Saved():
     num_epochs = 10
 
     # can train with larger batch size on saved preds
-    train_batch_size = 32
+    train_batch_size = 64
 
     p2 = p2_net(q=num_classes).to(device)
 
@@ -100,6 +100,7 @@ def trainP2Saved():
     model.eval()
 
     # multiple gpu training
+    p2 = torch.nn.DataParallel(p2).cuda()
     model = torch.nn.DataParallel(model).cuda()
 
     saved_preds_path = os.path.join(ROOT_DIR,'segmentation','Saved_Preds')
