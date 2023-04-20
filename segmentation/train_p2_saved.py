@@ -70,7 +70,7 @@ def trainP2Saved():
     batch_size = 1
     num_seq = 3
     lr = 0.003
-    num_epochs = 10
+    num_epochs = 40
 
     # can train with larger batch size on saved preds
     train_batch_size = 32
