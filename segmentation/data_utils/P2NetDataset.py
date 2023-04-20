@@ -333,9 +333,9 @@ class SavedP2NetTraining(data.Dataset):
 
         # getting pytorch data
         # data object has keys 'points', 'labels' 'pred'
-        curr_data = torch.load(selected_file)
-        prev_data = torch.load(frame_prev)
-        prev_prev_data = torch.load(frame_prev_prev)
+        curr_data = torch.load(selected_file,map_location='cpu')
+        prev_data = torch.load(frame_prev,map_location='cpu')
+        prev_prev_data = torch.load(frame_prev_prev,map_location='cpu')
 
         pc = [curr_data['points'].numpy(),prev_data['points'].numpy(),prev_prev_data['points'].numpy()]
         # aligning the points clouds
