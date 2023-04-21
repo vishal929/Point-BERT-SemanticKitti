@@ -180,7 +180,7 @@ def trainP2Saved():
                 # computing class level accuracies and miou
                 # one hot label has shape (batch,npoints,19)
                 one_hot_label = F.one_hot(labels, num_classes)
-                seg_pred, _ = p2(input_seq)
+                seg_pred = p2(input_seq)
                 # cur_pred_val = seg_pred.cpu().data.numpy()
                 # converting (Batch,npoints,19) to (batch,npoints,1) with the predicted class
                 cur_pred_val = torch.argmax(seg_pred, dim=-1)
