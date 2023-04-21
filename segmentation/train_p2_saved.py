@@ -73,7 +73,7 @@ def trainP2Saved():
     num_epochs = 40
 
     # can train with larger batch size on saved preds
-    train_batch_size = 16
+    train_batch_size = 64
 
     p2 = p2_net(q=num_classes).to(device)
 
@@ -104,7 +104,7 @@ def trainP2Saved():
     model = torch.nn.DataParallel(model).cuda()
 
     saved_preds_path = os.path.join(ROOT_DIR,'segmentation','Saved_Preds')
-    train_set = SavedP2NetTraining(saved_preds_path)
+    train_set = SavedP2NetTraining(saved_preds_path,get_features=True)
     val_set = P2Net_Dataset(npoints=npoints,split='val')
 
     collate_fn = functools.partial(P2Net_collatn, model=model)
@@ -129,12 +129,13 @@ def trainP2Saved():
             optimizer.zero_grad()
 
             # features is of shape (batch,npoints,68)
+            b , num_points, _ = features.shape
             features = features.to(device)
             labels = labels.to(device)
 
             #print('features shape: '+ str(features.shape))
             #print('labels shape: ' + str(labels.shape))
-            preds = p2(features).view(train_batch_size * npoints, num_classes)
+            preds = p2(features).view(b * num_points, num_classes)
             #print('p2 preds shape: ' + str(preds.shape))
             # import pdb; pdb.set_trace()
             loss = criterion(preds, labels.view(-1))
@@ -146,7 +147,7 @@ def trainP2Saved():
 
             # getting training accuracy
             correct = pred_choice.eq(labels.view(-1)).type(torch.int32).sum().cpu()
-            mean_correct.append(correct.item() / (train_batch_size * npoints))
+            mean_correct.append(correct.item() / (b * num_points))
             running_loss += loss.item()
 
             # removing stray items
