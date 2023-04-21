@@ -103,7 +103,7 @@ def trainP2Saved():
     p2 = torch.nn.DataParallel(p2).cuda()
     model = torch.nn.DataParallel(model).cuda()
 
-    saved_preds_path = os.path.join(ROOT_DIR,'segmentation','Saved_Preds')
+    saved_preds_path = os.path.join(ROOT_DIR,'segmentation','Saved_Features')
     train_set = SavedP2NetTraining(saved_preds_path,get_features=True)
     val_set = P2Net_Dataset(npoints=npoints,split='val')
 
