@@ -148,7 +148,7 @@ def get_seq_frame(path):
     return parent_dir, number
 
 # the collatn_fn function for loading the P2NetDataset into the pytorch dataloader
-def P2Net_collatn(item, model=None, device='cuda'):
+def P2Net_collatn(item, model=None, device='cuda',split='train'):
     point_clouds = [tmp_item[0] for tmp_item in item]
     if item[0][1] is not None:
         labels = [tmp_item[1] for tmp_item in item]
@@ -165,10 +165,11 @@ def P2Net_collatn(item, model=None, device='cuda'):
     # -----------------------------------------------------------------Point Bert-------------------------------------------------
     # batch up the point_clouds
     points_pb = points_clouds.reshape(-1, num_points, 4)[:, :, 0:3]  # (batch_size * num_seq, num_points, 3)
-    points_pb = points_pb.numpy()
-    points_pb[:, :, 0:3] = provider.random_scale_point_cloud(points_pb[:, :, 0:3])
-    points_pb[:, :, 0:3] = provider.shift_point_cloud(points_pb[:, :, 0:3])
-    points_pb = torch.Tensor(points_pb)
+    if split == 'train':
+        points_pb = points_pb.numpy()
+        points_pb[:, :, 0:3] = provider.random_scale_point_cloud(points_pb[:, :, 0:3])
+        points_pb[:, :, 0:3] = provider.shift_point_cloud(points_pb[:, :, 0:3])
+        points_pb = torch.Tensor(points_pb)
     points_pb = points_pb.float().to(device)
 
     # get the model predict for every point clouds
