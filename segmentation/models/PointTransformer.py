@@ -342,7 +342,7 @@ class get_model(nn.Module):
         #print('forward batch: ' + str(B))
         #print('forward dimensions: ' + str(C))
         #print('forward num_points: ' + str(N))
-        pts = pts.transpose(-1, -2) # B N 3
+        pts = pts.transpose(-1, -2).contiguous() # B N 3
         # divide the point clo  ud in the same form. This is important
         neighborhood, center = self.group_divider(pts)
         # # generate mask

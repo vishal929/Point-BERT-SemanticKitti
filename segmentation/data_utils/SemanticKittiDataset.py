@@ -43,7 +43,7 @@ class SemanticKitti(data.Dataset):
     # splits can train,test,val
     # experimental is a flag that is set to use different splits
     # i.e we want to test on a portion of the training set instead of the official splits
-    def __init__(self, npoints=2048, split='train', experimental=True):
+    def __init__(self, npoints=2048, split='train', experimental=True, return_files=False, return_reflectance=False):
         self.data_root = os.path.join(ROOT_DIR, 'data', 'SemanticKitti')
         self.npoints = npoints
         self.split = split.strip().lower()
@@ -54,6 +54,10 @@ class SemanticKitti(data.Dataset):
         self.inv_map = load_kitti_label_map('learning_map_inv')
         # maps the actual categorical label indices to names
         self.name_map = load_kitti_label_map('labels')
+        # if return files is true, we also return the point cloud file and the label file
+        self.return_files = return_files
+        # if return reflectance is true, we return the 4 features for each point in the point cloud (x,y,z,remittance)
+        self.return_reflectance =return_reflectance
 
         # specific scenes are used for train,val, and test respectively
         # we do not have access to test labels, but we need to output test results and submit to competition site
@@ -101,7 +105,8 @@ class SemanticKitti(data.Dataset):
         point_cloud_file, label_file = self.file_list[idx]
         point_cloud = np.fromfile(point_cloud_file, dtype=np.float32).reshape((-1, 4))
         # for the point cloud, we are only interested in xyz for this task -> no remission
-        point_cloud = point_cloud[:, :3]
+        if not self.return_reflectance:
+            point_cloud = point_cloud[:, :3]
         labels = None
         if label_file is not None:
             # lower 16 bits give the semantic label
@@ -135,18 +140,29 @@ class SemanticKitti(data.Dataset):
             point_cloud = point_cloud[sampling_indices,:]
             if labels is not None:
                 labels = labels[sampling_indices]
+        if self.return_files:
+            return point_cloud, labels, str(point_cloud_file), str(label_file)
         return point_cloud, labels
 
     def __len__(self):
         return len(self.file_list)
 
 '''
-test = SemanticKitti()
-cloud, label = test[2]
+test = SemanticKitti(split='test',return_files=True)
+test_loader = data.DataLoader(test,batch_size=3)
+cloud, label, cloud_file, label_file = test[2]
 print(cloud.shape)
 print(label.shape)
+print(cloud_file)
+print(label_file)
 print(np.unique(label))
 print(len(test.inv_map))
+
+clouds, labels, c_files, l_files = next(iter(test_loader))
+print(clouds.shape)
+print(labels.shape)
+print(c_files)
+print(l_files)
 '''
 
 # WE HAVE 28 UNIQUE LABELS!
