@@ -107,7 +107,7 @@ def trainP2Saved():
     train_set = SavedP2NetTraining(saved_preds_path,get_features=True)
     val_set = P2Net_Dataset(npoints=npoints,split='val')
 
-    collate_fn = functools.partial(P2Net_collatn, model=model)
+    collate_fn = functools.partial(P2Net_collatn, model=model, split='val')
 
     # need to shuffle when training
     train_loader = DataLoader(train_set, batch_size=train_batch_size, shuffle=True)
